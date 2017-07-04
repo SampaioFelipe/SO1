@@ -1,49 +1,8 @@
-# SO1
-Repositório para o trabalho prático da Disciplina de Sistemas Operacionais 1
-
-## Descrição do Projeto: Gerenciamento de Memória
-**Proposta:** examinar como o SO xv6 lida com a memória e tentar extendê-lo.
-
-**Apostila sobre o xv6:** [xv6](http://www.cs.umanitoba.ca/~comp4430/readings/book-rev8.pdf) (esse trabalho foca no capítulo 2)
-
-Responder as perguntas:
-* Como o kernel sabe qual página física são usadas e quais não são?
-* Quais estruturas de dados são usadas para responder essa questão?
-* Onde essas estruturas residem?
-* O mecanismo de memória do xv6 limita o número de processos do usuário?
-* Qual número mais baixo de processos que o xv6 pode ter ao mesmo tempo?
-
-
-### Tarefa 1: Melhoramento do Visualizador de Detalhes de Processo
-**Objetivo:** desenvolver uma ferramenta para auxiliar no teste do uso de memória dos processos no sistema original.
-
-Tarefas a serem realizadas:
-- [x] Alguma coisa
-- [ ] Outra coisa
-
-### Tarefa 2: Proteção de Null Pointer
-
-### Tarefa 3: Proteção de Segmentos read-only
-
-### Tarefa 4: Copy-on-Write (COW)
-
-
-## Instruções para Execução
-Para executar o projeto é necessário ter instalado o emulador [**QEMU**](http://www.qemu.org/) (no ubuntu: *apt-get install qemu*).
-
-Após a instalação execute os seguintes comandos no diretório do projeto para compilar e executá-lo:
-1. make
-2. make qemu
-
-Utilize o comando ***make clean*** após a execução para excluir os arquivos gerados pela compilação.
-
-## Descrição do Repositório original (xv6)
-
 xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
 Version 6 (v6).  xv6 loosely follows the structure and style of v6,
 but is implemented for a modern x86-based multiprocessor using ANSI C.
 
-### ACKNOWLEDGMENTS
+ACKNOWLEDGMENTS
 
 xv6 is inspired by John Lions's Commentary on UNIX 6th Edition (Peer
 to Peer Communications; ISBN: 1-57398-013-7; 1st edition (June 14,
@@ -71,7 +30,7 @@ Xi Wang, Keiichi Watanabe, Nicolas Wolovick, Jindong Zhang, and Zou Chang Wei.
 The code in the files that constitute xv6 is
 Copyright 2006-2016 Frans Kaashoek, Robert Morris, and Russ Cox.
 
-### ERROR REPORTS
+ERROR REPORTS
 
 If you spot errors or have suggestions for improvement, please send email to
 Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).  If you have
@@ -80,7 +39,7 @@ is as a teaching operating system for MIT's 6.828. For example, we are in
 particular interested in simplifications and clarifications, instead of
 suggestions for new systems calls, more portability, etc.
 
-### BUILDING AND RUNNING XV6
+BUILDING AND RUNNING XV6
 
 To build xv6 on an x86 ELF machine (like Linux or FreeBSD), run "make".
 On non-x86 or non-ELF machines (like OS X, even on x86), you will
