@@ -1,8 +1,21 @@
 # SO1
 Repositório para o trabalho prático da Disciplina de Sistemas Operacionais 1
 
-## Descrição do Projeto
-- [x] this is an incomplete item
+## Descrição do Projeto: Gerenciamento de Memória
+?
+
+### Tarefa 1: Melhoramento do Visualizador de Detalhes de Processo
+
+Tarefas a serem realizadas:
+- [x] Alguma coisa
+- [ ] Outra coisa
+
+### Tarefa 2: Proteção de Null Pointer
+
+### Tarefa 3: Proteção de Segmentos read-only
+
+### Tarefa 4: Copy-on-Write (COW)
+
 
 ## Instruções para Execução
 Para executar o projeto é necessário ter instalado o emulador [**QEMU**](http://www.qemu.org/) (no ubuntu: *apt-get install qemu*).
