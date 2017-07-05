@@ -7,11 +7,14 @@ Repositório para o trabalho prático da Disciplina de Sistemas Operacionais 1
 **Apostila sobre o xv6:** [xv6](http://www.cs.umanitoba.ca/~comp4430/readings/book-rev8.pdf) (esse trabalho foca no capítulo 2)
 
 Responder as perguntas:
-* Como o kernel sabe qual página física são usadas e quais não são?
-* Quais estruturas de dados são usadas para responder essa questão?
-* Onde essas estruturas residem?
-* O mecanismo de memória do xv6 limita o número de processos do usuário?
-* Qual número mais baixo de processos que o xv6 pode ter ao mesmo tempo?
+* **Como o kernel sabe qual página física são usadas e quais não são?**
+    Em [mmu.h](xv6/mmu.h), estão definidas as configurações para o gerenciamento de memória. Nele, está definido o descritor de segmento, uma estrutura de 64 bits que contém todas as informações sobre o espaço de endereços de memória a ser utilizado. Dentro desta estrutura, existe um bit *avl* que indica se aquele segmento de memória está disponível ou não para o uso do sistema.
+* **Quais estruturas de dados são usadas para responder essa questão?**
+    A estrutura de dados utilizada é um descritor de segmento, que armazena o endereço base e o endereço limite de memória do segmento, assim como diversas *flags* que indicam seu estado, incluindo a *flag avl*.
+* **Onde essas estruturas residem?**
+    Esta estrutura está implementada no código [mmu.h](xv6/mmu.h).
+* **O mecanismo de memória do xv6 limita o número de processos do usuário?**
+* **Qual número mais baixo de processos que o xv6 pode ter ao mesmo tempo?**
 
 
 ### Tarefa 1: Melhoramento do Visualizador de Detalhes de Processo
