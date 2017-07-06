@@ -17,19 +17,27 @@ Responder as perguntas:
 * **Qual número mais baixo de processos que o xv6 pode ter ao mesmo tempo?**
 
 
-### Tarefa 1: Melhoramento do Visualizador de Detalhes de Processo
+### Tarefa 1 (Marcio): Melhoramento do Visualizador de Detalhes de Processo
 **Objetivo:** desenvolver uma ferramenta para auxiliar no teste do uso de memória dos processos no sistema original.
 
 Tarefas a serem realizadas:
-- [x] Alguma coisa
-- [ ] Outra coisa
+- [ ] Encontrar onde está a função chamada pelo *ctrl+P*.
+- [ ] Incrementar a função para mostrar detalhes do gerenciamento de memória.
 
-### Tarefa 2: Proteção de Null Pointer
+### Tarefa 2 (Quécole): Proteção de Null Pointer
+**Objetivo:** implementar exceção de null pointer (acesso a posição 0 da memória).
 
-### Tarefa 3: Proteção de Segmentos read-only
+- [ ] Implementar a funcionalidade para programas do usuário (e fork_test).
 
-### Tarefa 4: Copy-on-Write (COW)
+- [ ] Atualizar o Makefile (tag -T)
 
+- [ ] Escrever um programa que exibe o conteúdo de memória no enderesso 0.
+
+### Tarefa 3 (Pedro): Proteção de Segmentos read-only
+**Objetivo:** implementar a proteção de *read-only* no segmento de texto.
+
+### Tarefa 4 (Sampaio): Copy-on-Write (COW)
+**Objetivo:**
 
 ## Instruções para Execução
 Para executar o projeto é necessário ter instalado o emulador [**QEMU**](http://www.qemu.org/) (no ubuntu: *apt-get install qemu*).
