@@ -1,0 +1,26 @@
+Tarefa 4
+
+/*Criação de uma syscall*/
+
+syscall.h -> adiciona uma entrada para definir #define
+defs.h (definições de funções) -> editar cabeçalho em proc
+user.h ->
+sysproc.c
+usys.S
+syscall.c
+proc.c -> código
+criação do testeCowfork.c
+Makefile
+
+/*Implementação da funcionalidade*/
+
+* Copyuvm_cow maps the parent’s memory read-only in both the parent and the child. When either of them tries to write to it, the CPU will raise a page fault exception (the faulting address can be retrieved from the control register cr2.)
+
+* The trap frame contains all the information necessary to restore the user mode processor registers when the kernel returns to the current process, so that the processor can continue exactly as it was when the trap started.
+
+* The context switch code (2958) sets the stack pointer to point just beyond the end of p->context. allocproc places p->context on the stack, and puts a pointer to trapret just above it; that is where forkret will return.
+
+Em vm.c
+// Given a parent process's page table, create a copy
+// of it for a child.
+pde_t* copyuvm(pde_t *pgdir, uint sz)
