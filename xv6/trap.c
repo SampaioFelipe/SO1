@@ -91,6 +91,11 @@ trap(struct trapframe *tf)
             "eip 0x%x addr 0x%x--kill proc\n",
             proc->pid, proc->name, tf->trapno, tf->err, cpunum(), tf->eip,
             rcr2());
+            // Se o endereço que tentou ser acessado foi o 0 - avisar que foi um
+            // null pointer Exception
+            if (rcr2() == 0) {
+              cprintf("Segmentation Fault - Null Pointer Dereference\n");
+            }
     proc->killed = 1;
   }
 
