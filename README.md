@@ -27,11 +27,13 @@ Tarefas a serem realizadas:
 ### Tarefa 2 (Quécole): Proteção de Null Pointer
 **Objetivo:** implementar exceção de null pointer (acesso a posição 0 da memória).
 
-- [ ] Implementar a funcionalidade para programas do usuário (e fork_test).
+- [x] Implementar a funcionalidade para programas do usuário (e fork_test).
 
-- [ ] Atualizar o Makefile (tag -T)
+- [x] Atualizar o Makefile (tag -T)
 
-- [ ] Escrever um programa que exibe o conteúdo de memória no enderesso 0.
+- [x] Escrever um programa que exibe o conteúdo de memória no endereço 0. 
+-- [x]  Programa deve retornar erro. 
+
 
 ### Tarefa 3 (Pedro): Proteção de Segmentos read-only
 **Objetivo:** implementar a proteção de *read-only* no segmento de texto.
