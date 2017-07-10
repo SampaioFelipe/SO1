@@ -85,7 +85,7 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -454,7 +454,8 @@ kill(int pid)
 void
 procdump(void)
 {
-  static char *states[] = {
+  static char *states[] =
+  {
   [UNUSED]    "unused",
   [EMBRYO]    "embryo",
   [SLEEPING]  "sleep ",
@@ -467,7 +468,8 @@ procdump(void)
   char *state;
   uint pc[10];
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
     if(p->state == UNUSED)
       continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
@@ -475,11 +477,35 @@ procdump(void)
     else
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
-    if(p->state == SLEEPING){
+    if(p->state == SLEEPING)
+    {
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
     }
     cprintf("\n");
+
+    pte_t *base_pde = (pde_t*)cpu->ts.cr3;
+    pte_t *pde = &base_pde[PDX(p->pgdir)];
+    pte_t *pte;
+    pte_t *pte_ppn;
+    int dirindex;
+    // int pageindex;
+    cprintf("Page tables:\n");
+    cprintf("    Memory location of page directory = %p\n", pde);
+
+    for (dirindex = 0; dirindex < NPDENTRIES; dirindex++)
+    {
+        if((PTE_FLAGS(pde[dirindex]) & PTE_P) && (PTE_FLAGS(pde[dirindex]) & PTE_U))
+        {
+            pte = (pte_t*)PTE_ADDR(pde[dirindex]);
+            pte_ppn = (pte_t*)(PTE_ADDR(pde[dirindex]) >> 12);
+            cprintf("    pdir PTE %d, %p\n", dirindex, pte_ppn);
+            cprintf("        Memory location of page table = %p\n", pte);
+
+            if((PTE_FLAGS(pte[0]) & PTE_P) && (PTE_FLAGS(pte[0]) & PTE_U))
+                cprintf("%p\n", pte[0]);
+        }
+    }
   }
 }

@@ -22,6 +22,8 @@ Responder as perguntas:
 
 Tarefas a serem realizadas:
 - [ ] Encontrar onde está a função chamada pelo *ctrl+P*.
+
+Está no arquivo [proc.c](xv6/proc.c), o nome da função é *procdump*.
 - [ ] Incrementar a função para mostrar detalhes do gerenciamento de memória.
 
 ### Tarefa 2 (Quécole): Proteção de Null Pointer
