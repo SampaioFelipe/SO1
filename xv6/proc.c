@@ -20,8 +20,7 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
-void
-pinit(void)
+void pinit(void)
 {
   initlock(&ptable.lock, "ptable");
 }
@@ -31,8 +30,7 @@ pinit(void)
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
-static struct proc*
-allocproc(void)
+static struct proc* allocproc(void)
 {
   struct proc *p;
   char *sp;
@@ -40,13 +38,13 @@ allocproc(void)
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == UNUSED)
-      goto found;
+  if(p->state == UNUSED)
+  goto found;
 
   release(&ptable.lock);
   return 0;
 
-found:
+  found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
@@ -85,10 +83,10 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
-    panic("userinit: out of memory?");
+  panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
@@ -124,10 +122,10 @@ growproc(int n)
   sz = proc->sz;
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
-      return -1;
+    return -1;
   } else if(n < 0){
     if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0)
-      return -1;
+    return -1;
   }
   proc->sz = sz;
   switchuvm(proc);
@@ -137,8 +135,7 @@ growproc(int n)
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
-int
-fork(void)
+int fork(void)
 {
   int i, pid;
   struct proc *np;
@@ -163,8 +160,8 @@ fork(void)
   np->tf->eax = 0;
 
   for(i = 0; i < NOFILE; i++)
-    if(proc->ofile[i])
-      np->ofile[i] = filedup(proc->ofile[i]);
+  if(proc->ofile[i])
+  np->ofile[i] = filedup(proc->ofile[i]);
   np->cwd = idup(proc->cwd);
 
   safestrcpy(np->name, proc->name, sizeof(proc->name));
@@ -177,6 +174,53 @@ fork(void)
 
   release(&ptable.lock);
 
+  cprintf("Processo: %d Pgdir:%d\n", np->pid, np->pgdir);
+
+  return pid;
+}
+
+/*Implementação do cowfork*/
+int cowfork(void){
+  int i, pid;
+  // np: novo processo
+  struct proc *np;
+
+  // Realiza o processo de alocação do processo a ser criado.
+  if((np = allocproc()) == 0){
+    return -1;
+  }
+
+  /* Pra realizar a operação cow é necessário tratar o código de cópia da page table e no lugar apenas apontar a do pai*/
+  if((np->pgdir = share_cow(proc->pgdir, proc->sz)) == 0){
+    kfree(np->kstack);
+    np->kstack = 0;
+    np->state = UNUSED;
+    return -1;
+  }
+
+  np->sz = proc->sz;
+  np->parent = proc;
+  *np->tf = *proc->tf;
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->eax = 0;
+
+  for(i = 0; i < NOFILE; i++)
+  if(proc->ofile[i])
+  np->ofile[i] = filedup(proc->ofile[i]);
+  np->cwd = idup(proc->cwd);
+
+  safestrcpy(np->name, "Filho", sizeof(proc->name));
+
+  pid = np->pid;
+
+  acquire(&ptable.lock);
+
+  np->state = RUNNABLE;
+
+  release(&ptable.lock);
+
+  cprintf("Processo: %d Pgdir:%d", np->pid, np->pgdir);
   return pid;
 }
 
@@ -190,7 +234,7 @@ exit(void)
   int fd;
 
   if(proc == initproc)
-    panic("init exiting");
+  panic("init exiting");
 
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
@@ -215,7 +259,7 @@ exit(void)
     if(p->parent == proc){
       p->parent = initproc;
       if(p->state == ZOMBIE)
-        wakeup1(initproc);
+      wakeup1(initproc);
     }
   }
 
@@ -239,7 +283,7 @@ wait(void)
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != proc)
-        continue;
+      continue;
       havekids = 1;
       if(p->state == ZOMBIE){
         // Found one.
@@ -289,7 +333,7 @@ scheduler(void)
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
-        continue;
+      continue;
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -322,13 +366,13 @@ sched(void)
   int intena;
 
   if(!holding(&ptable.lock))
-    panic("sched ptable.lock");
+  panic("sched ptable.lock");
   if(cpu->ncli != 1)
-    panic("sched locks");
+  panic("sched locks");
   if(proc->state == RUNNING)
-    panic("sched running");
+  panic("sched running");
   if(readeflags()&FL_IF)
-    panic("sched interruptible");
+  panic("sched interruptible");
   intena = cpu->intena;
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
@@ -371,10 +415,10 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   if(proc == 0)
-    panic("sleep");
+  panic("sleep");
 
   if(lk == 0)
-    panic("sleep without lk");
+  panic("sleep without lk");
 
   // Must acquire ptable.lock in order to
   // change p->state and then call sched.
@@ -411,8 +455,8 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
-      p->state = RUNNABLE;
+  if(p->state == SLEEPING && p->chan == chan)
+  p->state = RUNNABLE;
 }
 
 // Wake up all processes sleeping on chan.
@@ -438,7 +482,7 @@ kill(int pid)
       p->killed = 1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
-        p->state = RUNNABLE;
+      p->state = RUNNABLE;
       release(&ptable.lock);
       return 0;
     }
@@ -455,12 +499,12 @@ void
 procdump(void)
 {
   static char *states[] = {
-  [UNUSED]    "unused",
-  [EMBRYO]    "embryo",
-  [SLEEPING]  "sleep ",
-  [RUNNABLE]  "runble",
-  [RUNNING]   "run   ",
-  [ZOMBIE]    "zombie"
+    [UNUSED]    "unused",
+    [EMBRYO]    "embryo",
+    [SLEEPING]  "sleep ",
+    [RUNNABLE]  "runble",
+    [RUNNING]   "run   ",
+    [ZOMBIE]    "zombie"
   };
   int i;
   struct proc *p;
@@ -469,16 +513,16 @@ procdump(void)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
-      continue;
+    continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
-      state = states[p->state];
+    state = states[p->state];
     else
-      state = "???";
+    state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
-        cprintf(" %p", pc[i]);
+      cprintf(" %p", pc[i]);
     }
     cprintf("\n");
   }

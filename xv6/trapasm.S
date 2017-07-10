@@ -9,7 +9,7 @@ alltraps:
   pushl %fs
   pushl %gs
   pushal
-  
+
   # Set up data and per-cpu segments.
   movw $(SEG_KDATA<<3), %ax
   movw %ax, %ds
@@ -33,3 +33,15 @@ trapret:
   popl %ds
   addl $0x8, %esp  # trapno and errcode
   iret
+
+# implementacao do cowFork
+.globl read_cr2
+read_cr2:
+ movl %cr2, %eax
+ ret
+
+.globl flush_tlb_all
+flush_tlb_all:
+ movl %cr3, %eax
+ movl %eax, %cr3
+ ret

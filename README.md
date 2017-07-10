@@ -37,7 +37,11 @@ Tarefas a serem realizadas:
 **Objetivo:** implementar a proteção de *read-only* no segmento de texto.
 
 ### Tarefa 4 (Sampaio): Copy-on-Write (COW)
-**Objetivo:**
+**Objetivo:** implementar a chamada de sistema cowFork, que realiza a criação de um novo processo sem a necessidade de realizar a cópia da tabela de páginas.
+
+- [x] Criação e configuração da nova chamada de sistema;
+- [ ] Implementação da cowFork;
+- [ ] Tratar a modificação de página
 
 ## Instruções para Execução
 Para executar o projeto é necessário ter instalado o emulador [**QEMU**](http://www.qemu.org/) (no ubuntu: *apt-get install qemu*).
