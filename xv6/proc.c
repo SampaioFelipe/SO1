@@ -485,26 +485,42 @@ procdump(void)
     }
     cprintf("\n");
 
-    pte_t *base_pde = (pde_t*)cpu->ts.cr3;
-    pte_t *pde = &base_pde[PDX(p->pgdir)];
+
+    // task1
+    pte_t *pde = p->pgdir; // Endereco virtual para o diretorio de paginas do processo
     pte_t *pte;
+    pte_t *pte_va;
     pte_t *pte_ppn;
+
     int dirindex;
-    // int pageindex;
+    int pageindex;
+
     cprintf("Page tables:\n");
-    cprintf("    Memory location of page directory = %p\n", pde);
+    cprintf("    Memory location of page directory = %p\n", V2P(pde));
 
     for (dirindex = 0; dirindex < NPDENTRIES; dirindex++)
     {
-        if((PTE_FLAGS(pde[dirindex]) & PTE_P) && (PTE_FLAGS(pde[dirindex]) & PTE_U))
+        if ((pde[dirindex] & PTE_P) && (pde[dirindex] & PTE_U))
         {
-            pte = (pte_t*)PTE_ADDR(pde[dirindex]);
-            pte_ppn = (pte_t*)(PTE_ADDR(pde[dirindex]) >> 12);
-            cprintf("    pdir PTE %d, %p\n", dirindex, pte_ppn);
-            cprintf("        Memory location of page table = %p\n", pte);
+            // Page directory
+            pte = (pte_t*)PTE_ADDR(pde[dirindex]); // Endereco fisico da pagina armazenada na posicao dirindex do diretorio
+            pte_va = P2V(pte); // Endereco virutal da pagina armazenada na posicao dirindex do diretorio
+            pte_ppn = (pte_t*)(PTE_ADDR(pde[dirindex]) >> 12); // PNN da pagina armazenada na posicao dirindex do diretorio
 
-            if((PTE_FLAGS(pte[0]) & PTE_P) && (PTE_FLAGS(pte[0]) & PTE_U))
-                cprintf("%p\n", pte[0]);
+            cprintf("    pdir PTE %d, %p:\n", dirindex, pte_ppn); // pdir PTE index, PPN:
+            cprintf("        Memory location of page table = %p\n", pte); // memory location of page table = endereco_fisico
+
+            // Page table
+            for (pageindex = 0; pageindex < NPTENTRIES; pageindex++)
+            {
+                if ((pte_va[pageindex] & PTE_P) && (pte_va[pageindex] & PTE_U))
+                {
+                    // ptbl PTE index, PPN, endereco_fisico
+                    cprintf("       ptbl PTE %d", pageindex);
+                    cprintf(", %p", (PTE_ADDR(pte_va[pageindex]) >> 12));
+                    cprintf(", %p\n", PTE_ADDR(pte_va[pageindex]));
+                }
+            }
         }
     }
   }
