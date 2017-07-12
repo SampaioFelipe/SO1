@@ -6,6 +6,51 @@
 #include "mmu.h"
 #include "proc.h"
 #include "elf.h"
+#include "spinlock.h"
+
+//=============================== COW ================================
+#define TAMSHARETABLE PHYSTOP >> 12 //O maximo de memória que pode ser mapeada
+// Tabela que informa a quantidade de processos que estão utilizando o mesmo espaço de memória
+static int shareTable[TAMSHARETABLE]; // tabela que possui entrada para todas as paginas da memoria
+
+// Estura utilizada para bloquear o código crítico de quando é necessário
+// Realizar mudanças na shareTable
+struct spinlock tablelock;
+
+// Configura o tablelock e inicia a tabela de compartilhamento de paginas
+void sharetableinit(void)
+{
+  initlock(&tablelock, "sharetable");
+  int i;
+
+  acquire(&tablelock);
+  for(i=0; i< TAMSHARETABLE; i++){
+    shareTable[i]=0;
+  }
+  release(&tablelock);
+
+  cprintf("Inicializacao da ShareTable concluida\n");
+}
+
+int getCountPPN(uint pa){
+
+  int index = (pa >> 12) & 0xFFFFF; // recupera o PPN do PA passado
+  return shareTable[index]; // Retorna o numero de processos que estão compartilhando a mesma pagina de memoria fisica
+}
+
+void incCountPPN(uint pa){
+
+  int index = (pa >> 12) & 0xFFFFF; // recupera o PPN do PA passado
+  shareTable[index]++; // Incrementa o numero de processos que estão compartilhando a posiçao de memória
+}
+
+void decCountPPN(uint pa){
+
+  int index = (pa >> 12) & 0xFFFFF; // recupera o PPN do PA passado
+  shareTable[index]--; // Decrementa o numero de compartilhamento quando um dos processos deixa de utlizar a posicao de memoria
+}
+//===============================================================
+
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
@@ -131,7 +176,7 @@ setupkvm(void)
   return 0;
   memset(pgdir, 0, PGSIZE);
   if (P2V(PHYSTOP) > (void*)DEVSPACE)
-  panic("PHYSTOP too high");
+    panic("PHYSTOP too high");
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++){
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
       (uint)k->phys_start, k->perm) < 0)
@@ -336,58 +381,6 @@ setupkvm(void)
     return 0;
   }
 
-  pde_t* share_cow(pde_t *pgdir, uint sz)
-  {
-    pde_t *d;
-    pte_t *pte;
-    uint i, flags;
-
-    // Mapeia o kernel para o novo processo
-    if((d = setupkvm()) == 0)
-      return 0;
-
-    for(i = 0; i < sz; i += PGSIZE){
-      if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
-        panic("share_cow: pte should exist");
-      if(!(*pte & PTE_P))
-        panic("share_cow: page not present");
-        
-      pa = PTE_ADDR(*pte);
-      flags = PTE_FLAGS(*pte);
-      flags &= ~PTE_W;
-      // if((mem = kalloc()) == 0)
-      // goto bad;
-      // memmove(mem, (char*)P2V(pa), PGSIZE);
-      cprintf("Dentro\n");
-      mappages(d, (void*)i, PGSIZE, PTE_ADDR(*pte), flags);
-      cprintf("Mapeou\n");
-      //goto bad;
-    }
-
-    flush_tlb_all();
-    return d;
-
-    // bad:
-    // freevm(d);
-    // cprintf("Erro\n");
-    // return 0;
-  }
-
-void handle_pgflt(void){
-  //uint pageFault = read_cr2(); // endereco fisico
-
-  // pa = PTE_ADDR(*pte);
-  // flags = PTE_FLAGS(*pte);
-  // flags &= ~PTE_W;
-  // if((mem = kalloc()) == 0)
-  // goto bad;
-  // memmove(mem, (char*)P2V(pa), PGSIZE);
-  // mappages(d, (void*)i, PGSIZE, pa, flags);
-
-  //cprintf("Deu ruim %d ", pageFault);
-
-}
-
   //PAGEBREAK!
   // Map user virtual address to kernel address.
   char*
@@ -435,3 +428,156 @@ void handle_pgflt(void){
   // Blank page.
   //PAGEBREAK!
   // Blank page.
+
+  //=========================== COW ===========================
+
+pde_t* share_cow(pde_t *pgdir, uint sz)
+{
+ // cprintf("in cow map\n");
+
+  pde_t *d;
+  pte_t *pte;
+  uint pa, i, flags;
+
+  if((d = setupkvm()) == 0)
+    return 0;
+
+  acquire(&tablelock);
+  for(i = 0; i < sz; i += PGSIZE){
+    if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
+      panic("copyuvm: pte should exist");
+    if(!(*pte & PTE_P))
+      panic("copyuvm: page not present");
+    *pte &= ~PTE_W; // disable the Writable bit
+    pa = PTE_ADDR(*pte);
+    flags = PTE_FLAGS(*pte);
+
+    // instead of create new pages, remap the pages for cow child
+    if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0)
+      goto bad;
+
+    if(getCountPPN(pa) == 0){
+      incCountPPN(pa);
+      incCountPPN(pa);
+    }
+    else{
+      incCountPPN(pa);
+    }
+
+    cprintf("pid: %d index: %d count: %d\n", proc->pid, pa, getCountPPN(pa));
+  }
+  release(&tablelock);
+  lcr3(V2P(proc->pgdir)); // flush the TLB
+  return d;
+
+bad:
+  freevm(d);
+  return 0;
+}
+
+void handle_pgflt(void){
+  // Se o processo possui paginas compartilhadas, realiza a cópia da memoria
+  // que causou o pagefalt (por ser read only)
+  if (proc->shared == 1) {
+    copyuvm_cow();
+  }
+
+  cprintf("Page fault \n");
+}
+
+int copyuvm_cow(void)
+{
+  uint pa;
+  uint addr;
+  pte_t *pte;
+  char *mem;
+
+  // Recupera o endereço virtual onde ocorreu o pagefault (armazenado no registrador cr2)
+  addr = rcr2();
+  // Recupera o Page Table Entry do endereço acima para o processo atual
+  pte = walkpgdir(proc->pgdir, (void *) addr, 0);
+  pa = PTE_ADDR(*pte);
+
+  acquire(&tablelock);
+  // Se pagina está sendo compartilhada
+  if (getCountPPN(pa) > 1) {
+    if((mem = kalloc()) == 0) // aloca uma nova página de memoria
+      goto bad;
+    memmove(mem, (char*)P2V(pa), PGSIZE);
+    *pte &= 0xFFF; // reset the first 20 bits of the entry
+    *pte |= V2P(mem) | PTE_W; // insere a permissão de escrita na nova pagina de memória
+
+    decCountPPN(pa); // Decrementa a quantidad processos que estão compartilhando a mesma memória
+  }
+  // Se há apenas um processo usando a pagina, basta dar permissão para escrita
+  else {
+    *pte |= PTE_W; // just enable the Writable bit for this process
+  }
+
+  release(&tablelock);
+
+  lcr3(V2P(proc->pgdir)); // flush the TLB
+
+  return 1;
+
+bad:
+  return 0;
+}
+// Desaloca a memoria virtual apontada por pgdir
+int deallocuvm_cow(pde_t *pgdir, uint oldsz, uint newsz)
+{
+  pte_t *pte;
+  uint a, pa;
+
+  if(newsz >= oldsz)
+    return oldsz;
+
+  a = PGROUNDUP(newsz);
+  // Será realizada mudanças na shareTable, é necessário bloquea-la, para que não haja problema de concorrência e a torne inválida
+  acquire(&tablelock);
+  for(; a < oldsz; a += PGSIZE){
+    pte = walkpgdir(pgdir, (char*)a, 0);
+    if(!pte)
+      a += (NPTENTRIES - 1) * PGSIZE;
+    else if((*pte & PTE_P) != 0){
+      pa = PTE_ADDR(*pte);
+      if(pa == 0)
+        panic("kfree");
+      // Se a memoria está sendo compartilhada, decrementa a quantidade de processos que estão compartilhando
+      // Pois está sendo desalocada do processo atual
+      if (getCountPPN(pa) > 1) {
+        decCountPPN(pa);
+      }
+      // se a memoria não está sendo compartilhada com nenhum outro processo
+      // pode ser liberada completamente
+      else {
+        char *v = P2V(pa);
+        kfree(v);
+        decCountPPN(pa);
+      }
+      // Faz o ponteiro para page table entry apontar para null
+      *pte = 0;
+    }
+  }
+  release(&tablelock);
+  return newsz;
+}
+// Libera a memoria virtual de um processo que utilizou o share_cow
+void freevm_cow(pde_t *pgdir)
+{
+  uint i;
+
+  if(pgdir == 0)
+    panic("freevm: no pgdir");
+  // Desaloca a memoria virtual do processo
+  deallocuvm_cow(pgdir, KERNBASE, 0);
+
+  for(i = 0; i < NPDENTRIES; i++){
+    if(pgdir[i] & PTE_P){
+      char *v = P2V(PTE_ADDR(pgdir[i]));
+      kfree(v);
+    }
+  }
+  kfree((char*)pgdir);
+}
+// ==========================================================================

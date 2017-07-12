@@ -45,9 +45,10 @@ trap(struct trapframe *tf)
     exit();
     return;
   }
-
+  // COW: Caso haja um pagefault
   if (tf->trapno == T_PGFLT) {
     proc->tf = tf;
+    // Lida com a questão de tratar o pagefault ocorrido
     handle_pgflt();
     return;
   }

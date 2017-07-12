@@ -70,6 +70,7 @@ static struct proc* allocproc(void)
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  p->shared = 0;
 
   return p;
 }
@@ -174,53 +175,8 @@ int fork(void)
 
   release(&ptable.lock);
 
-  cprintf("Processo: %d Pgdir:%d\n", np->pid, np->pgdir);
+  cprintf("Criou processo: %d Pgdir:%p\n", np->pid, np->pgdir);
 
-  return pid;
-}
-
-/*Implementação do cowfork*/
-int cowfork(void){
-  int i, pid;
-  // np: novo processo
-  struct proc *np;
-
-  // Realiza o processo de alocação do processo a ser criado.
-  if((np = allocproc()) == 0){
-    return -1;
-  }
-
-  /* Pra realizar a operação cow é necessário tratar o código de cópia da page table e no lugar apenas apontar a do pai*/
-  if((np->pgdir = share_cow(proc->pgdir, proc->sz)) == 0){
-    kfree(np->kstack);
-    np->kstack = 0;
-    np->state = UNUSED;
-    return -1;
-  }
-
-  np->sz = proc->sz;
-  np->parent = proc;
-  *np->tf = *proc->tf;
-
-  // Clear %eax so that fork returns 0 in the child.
-  np->tf->eax = 0;
-
-  for(i = 0; i < NOFILE; i++)
-  if(proc->ofile[i])
-  np->ofile[i] = filedup(proc->ofile[i]);
-  np->cwd = idup(proc->cwd);
-
-  safestrcpy(np->name, "Filho", sizeof(proc->name));
-
-  pid = np->pid;
-
-  acquire(&ptable.lock);
-
-  np->state = RUNNABLE;
-
-  release(&ptable.lock);
-
-  cprintf("Processo: %d Pgdir:%d", np->pid, np->pgdir);
   return pid;
 }
 
@@ -266,13 +222,13 @@ exit(void)
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
   sched();
+  cprintf("Deu exit\n");
   panic("zombie exit");
 }
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
-int
-wait(void)
+int wait(void)
 {
   struct proc *p;
   int havekids, pid;
@@ -290,7 +246,18 @@ wait(void)
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
-        freevm(p->pgdir);
+        // COW
+        // Se o processo não possui paginas compartilhadas, pode liberar a memória
+        if (p->shared == 0) {
+          freevm(p->pgdir);
+        }
+        // Caso esteja compartilhando alguma pagina, é necessário liberar apenas
+        // as paginas que não estão sendo compartilhadas
+        else {
+          freevm_cow(p->pgdir);
+          p->shared = 0;
+        }
+
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -498,20 +465,22 @@ kill(int pid)
 void
 procdump(void)
 {
-  static char *states[] = {
-    [UNUSED]    "unused",
-    [EMBRYO]    "embryo",
-    [SLEEPING]  "sleep ",
-    [RUNNABLE]  "runble",
-    [RUNNING]   "run   ",
-    [ZOMBIE]    "zombie"
+  static char *states[] =
+  {
+  [UNUSED]    "unused",
+  [EMBRYO]    "embryo",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
   };
   int i;
   struct proc *p;
   char *state;
   uint pc[10];
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
     if(p->state == UNUSED)
     continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
@@ -519,11 +488,100 @@ procdump(void)
     else
     state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
-    if(p->state == SLEEPING){
+    if(p->state == SLEEPING)
+    {
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
       cprintf(" %p", pc[i]);
     }
     cprintf("\n");
+
+
+    // task1
+    pte_t *pde = p->pgdir; // Endereco virtual para o diretorio de paginas do processo
+    pte_t *pte;
+    pte_t *pte_va;
+    pte_t *pte_ppn;
+
+    int dirindex;
+    int pageindex;
+
+    cprintf("Page tables:\n");
+    cprintf("    Memory location of page directory = %p\n", V2P(pde));
+
+    for (dirindex = 0; dirindex < NPDENTRIES; dirindex++)
+    {
+        if ((pde[dirindex] & PTE_P) && (pde[dirindex] & PTE_U))
+        {
+            // Page directory
+            pte = (pte_t*)PTE_ADDR(pde[dirindex]); // Endereco fisico da pagina armazenada na posicao dirindex do diretorio
+            pte_va = P2V(pte); // Endereco virutal da pagina armazenada na posicao dirindex do diretorio
+            pte_ppn = (pte_t*)(PTE_ADDR(pde[dirindex]) >> 12); // PNN da pagina armazenada na posicao dirindex do diretorio
+
+            cprintf("    pdir PTE %d, %p:\n", dirindex, pte_ppn); // pdir PTE index, PPN:
+            cprintf("        Memory location of page table = %p\n", pte); // memory location of page table = endereco_fisico
+
+            // Page table
+            for (pageindex = 0; pageindex < NPTENTRIES; pageindex++)
+            {
+                if ((pte_va[pageindex] & PTE_P) && (pte_va[pageindex] & PTE_U))
+                {
+                    // ptbl PTE index, PPN, endereco_fisico
+                    cprintf("       ptbl PTE %d", pageindex);
+                    cprintf(", %p", (PTE_ADDR(pte_va[pageindex]) >> 12));
+                    cprintf(", %p", PTE_ADDR(pte_va[pageindex]));
+                    cprintf(", SHARE: %d\n", getCountPPN(PTE_ADDR(pte_va[pageindex])));
+
+                }
+            }
+        }
+    }
   }
+}
+
+//============================== COW =========================================
+int cowfork(void){
+  int i, pid;
+  struct proc *np;
+
+  // // Realiza o processo de alocação do processo a ser criado.
+  if((np = allocproc()) == 0)
+    return -1;
+
+  // Aqui está a principal diferenca do fork original
+  // Ao invés de copiar a memória do pai para o filho,
+  // é realizado o compartilhamento pela função share_cow
+  if((np->pgdir = share_cow(proc->pgdir, proc->sz)) == 0){
+    kfree(np->kstack);
+    np->kstack = 0;
+    np->state = UNUSED;
+    return -1;
+  }
+  np->sz = proc->sz;
+  np->parent = proc;
+  *np->tf = *proc->tf;
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->eax = 0;
+
+  // Indica que, tanto o  processo pai quanto o processo filho contém paginas
+  // compartilhadas
+  proc->shared = 1;
+  np->shared = 1;
+
+  for(i = 0; i < NOFILE; i++)
+    if(proc->ofile[i])
+      np->ofile[i] = filedup(proc->ofile[i]);
+  np->cwd = idup(proc->cwd);
+
+  safestrcpy(np->name, proc->name, sizeof(proc->name));
+
+  pid = np->pid;
+
+  // lock to force the compiler to emit the np->state write last.
+  acquire(&ptable.lock);
+  np->state = RUNNABLE;
+  release(&ptable.lock);
+
+  return pid;
 }

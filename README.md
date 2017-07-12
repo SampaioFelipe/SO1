@@ -21,8 +21,11 @@ Responder as perguntas:
 **Objetivo:** desenvolver uma ferramenta para auxiliar no teste do uso de memória dos processos no sistema original.
 
 Tarefas a serem realizadas:
-- [ ] Encontrar onde está a função chamada pelo *ctrl+P*.
-- [ ] Incrementar a função para mostrar detalhes do gerenciamento de memória.
+- [x] Encontrar onde está a função chamada pelo *ctrl+P*.
+
+Está no arquivo [proc.c](xv6/proc.c), o nome da função é *procdump*.
+
+- [x] Incrementar a função para mostrar detalhes do gerenciamento de memória.
 
 ### Tarefa 2 (Quécole): Proteção de Null Pointer
 **Objetivo:** implementar exceção de null pointer (acesso a posição 0 da memória).

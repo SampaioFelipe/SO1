@@ -180,11 +180,16 @@ void            inituvm(pde_t*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
 pde_t*          copyuvm(pde_t*, uint);
 
-/*Implementação do cowfork*/
+//================ COW ======================
 pde_t*          share_cow(pde_t*, uint);
 void            handle_pgflt (void);
-uint            read_cr2 (void);
-void            flush_tlb_all (void);
+int             copyuvm_cow(void);
+void            sharetableinit(void);
+int             getCountPPN(uint);
+void            incCountPPN(uint);
+void            decCountPPN(uint);
+void            freevm_cow(pde_t*);
+//===========================================
 
 void            switchuvm(struct proc*);
 void            switchkvm(void);

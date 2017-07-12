@@ -85,6 +85,7 @@ extern int sys_exit(void);
 extern int sys_fork(void);
 /*Implementação da cowfork*/
 extern int sys_cowfork(void);
+
 extern int sys_fstat(void);
 extern int sys_getpid(void);
 extern int sys_kill(void);
