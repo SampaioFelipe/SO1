@@ -458,6 +458,23 @@ kill(int pid)
   return -1;
 }
 
+// Retorna se a página apontada por pte possui alguma posição de memória sendo utilizada
+uint
+temPosicaoUtilizada(pte_t *pte)
+{
+    int i;
+    for (i = 0; i < NPTENTRIES; i++)
+    {
+        if ((pte[i] & PTE_P) && (pte[i] & PTE_U))
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
@@ -478,9 +495,6 @@ procdump(void)
   struct proc *p;
   char *state;
   uint pc[10];
-
-  struct pagemap pm; // Estrutua para o mapeamento de paginas
-  pm.tamanho = 0; // Inicializa com tamanho 0
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
@@ -509,18 +523,21 @@ procdump(void)
     int dirindex;
     int pageindex;
 
+    struct pagemap pm; // Estrutura para o mapeamento de paginas
+    pm.tamanho = 0; // Inicializa com tamanho 0
+
     cprintf("Page tables:\n");
     cprintf("    Memory location of page directory = %p\n", V2P(pde));
 
     for (dirindex = 0; dirindex < NPDENTRIES; dirindex++)
     {
-        if ((pde[dirindex] & PTE_P) && (pde[dirindex] & PTE_U))
-        {
-            // Page directory
-            pte = (pte_t*)PTE_ADDR(pde[dirindex]); // Endereco fisico da pagina armazenada na posicao dirindex do diretorio
-            pte_va = P2V(pte); // Endereco virutal da pagina armazenada na posicao dirindex do diretorio
-            pte_ppn = (pte_t*)(PTE_ADDR(pde[dirindex]) >> 12); // PNN da pagina armazenada na posicao dirindex do diretorio
+        // Page directory
+        pte = (pte_t*)PTE_ADDR(pde[dirindex]); // Endereco fisico da pagina armazenada na posicao dirindex do diretorio
+        pte_va = P2V(pte); // Endereco virutal da pagina armazenada na posicao dirindex do diretorio
+        pte_ppn = (pte_t*)(PTE_ADDR(pde[dirindex]) >> 12); // PNN da pagina armazenada na posicao dirindex do diretorio
 
+        if ((pde[dirindex] & PTE_P) && (pde[dirindex] & PTE_U) && temPosicaoUtilizada(pte_va))
+        {
             // Salva dados para mapeamento de pagina
             pm.phisical_address[pm.tamanho] = pte;
             pm.virtual_address[pm.tamanho] = pte_va;
@@ -544,19 +561,19 @@ procdump(void)
             }
         }
     }
-  }
 
-  cprintf("Page mappings:\n");
+    cprintf("Page mappings:\n");
 
-  int ppn; // Phisical Page Number
-  int vpn; // Virtual Page Number
-  for (i = 0; i < pm.tamanho; i++)
-  {
-      // Primeiros 20 bits do endereco fisico
-      ppn = PTE_ADDR(pm.phisical_address[i]) >> 12;
-      // Primeiros 20 bits do endereco virtual
-      vpn = PTE_ADDR(pm.virtual_address[i]) >> 12;
-      cprintf("%x -> %x\n", vpn, ppn);
+    int ppn; // Phisical Page Number
+    int vpn; // Virtual Page Number
+    for (i = 0; i < pm.tamanho; i++)
+    {
+        // Primeiros 20 bits do endereco fisico
+        ppn = PTE_ADDR(pm.phisical_address[i]) >> 12;
+        // Primeiros 20 bits do endereco virtual
+        vpn = PTE_ADDR(pm.virtual_address[i]) >> 12;
+        cprintf("%x -> %x\n", vpn, ppn);
+    }
   }
 }
 
