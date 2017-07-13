@@ -14,7 +14,9 @@ Responder as perguntas:
 * **Onde essas estruturas residem?**
     Esta estrutura está implementada no código [mmu.h](xv6/mmu.h).
 * **O mecanismo de memória do xv6 limita o número de processos do usuário?**
+    Sim, em [param.h](xv6/param.h) é definida a constante **NPROC** que determina um número máximo de *64* processos.
 * **Qual número mais baixo de processos que o xv6 pode ter ao mesmo tempo?**
+
 
 
 ### Tarefa 1 (Marcio): Melhoramento do Visualizador de Detalhes de Processo
@@ -40,18 +42,18 @@ Está no arquivo [proc.c](xv6/proc.c), o nome da função é *procdump*.
 **Objetivo:** implementar a proteção de *read-only* no segmento de texto.
 
 ### Tarefa 4 (Sampaio): Copy-on-Write (COW)
-**Objetivo:** implementar a chamada de sistema cowFork, que realiza a criação de um novo processo sem a necessidade de realizar a cópia da tabela de páginas.
+**Objetivo:** implementar a chamada de sistema cowfork, que realiza a criação de um novo processo sem a necessidade de realizar a cópia da memória do processo pai para o processo filho.
 
 - [x] Criação e configuração da nova chamada de sistema;
-- [ ] Implementação da cowFork;
-- [ ] Tratar a modificação de página
+- [x] Implementação da chamada de sistema cowfork;
+- [x] Tratamento do compartilhamento de memória entre processos
+- [x] Teste
 
 ## Instruções para Execução
 Para executar o projeto é necessário ter instalado o emulador [**QEMU**](http://www.qemu.org/) (no ubuntu: *apt-get install qemu*).
 
 Após a instalação execute os seguintes comandos no diretório do projeto para compilar e executá-lo:
-1. make
-2. make qemu
+1. make qemu
 
 Utilize o comando ***make clean*** após a execução para excluir os arquivos gerados pela compilação.
 

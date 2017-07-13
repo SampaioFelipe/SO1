@@ -239,7 +239,7 @@ setupkvm(void)
 
   // Load a program segment into pgdir.  addr must be page-aligned
   // and the pages from addr to addr+sz must already be mapped.
-  int loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
+  int loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz, uint perm)
   {
     uint i, pa, n;
     pte_t *pte;
@@ -250,6 +250,14 @@ setupkvm(void)
       if((pte = walkpgdir(pgdir, addr+i, 0)) == 0)
       panic("loaduvm: address should exist");
       pa = PTE_ADDR(*pte);
+
+      perm = perm & PTE_W;
+      if(perm){
+        *pte |= perm;
+      }
+      else{
+        *pte &= ~PTE_W;
+      }
       if(sz - i < PGSIZE)
       n = sz - i;
       else
@@ -361,6 +369,7 @@ setupkvm(void)
 
     if((d = setupkvm()) == 0)
     return 0;
+
     for(i = 0; i < sz; i += PGSIZE){
       if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
@@ -429,12 +438,10 @@ setupkvm(void)
   //PAGEBREAK!
   // Blank page.
 
-  //=========================== COW ===========================
+//=========================== COW ===========================
 
 pde_t* share_cow(pde_t *pgdir, uint sz)
 {
- // cprintf("in cow map\n");
-
   pde_t *d;
   pte_t *pte;
   uint pa, i, flags;
@@ -467,7 +474,9 @@ pde_t* share_cow(pde_t *pgdir, uint sz)
     cprintf("pid: %d index: %d count: %d\n", proc->pid, pa, getCountPPN(pa));
   }
   release(&tablelock);
+
   lcr3(V2P(proc->pgdir)); // flush the TLB
+
   return d;
 
 bad:
@@ -477,12 +486,14 @@ bad:
 
 void handle_pgflt(void){
   // Se o processo possui paginas compartilhadas, realiza a cópia da memoria
-  // que causou o pagefalt (por ser read only)
+  // que causou o pagefault (por ser read only)
   if (proc->shared == 1) {
     copyuvm_cow();
+    cprintf("Page fault \n");
   }
 
-  cprintf("Page fault \n");
+  // Se for outro erro, apenas mata o processo
+  //kill(proc->pid);
 }
 
 int copyuvm_cow(void)
@@ -507,7 +518,7 @@ int copyuvm_cow(void)
     *pte &= 0xFFF; // reset the first 20 bits of the entry
     *pte |= V2P(mem) | PTE_W; // insere a permissão de escrita na nova pagina de memória
 
-    decCountPPN(pa); // Decrementa a quantidad processos que estão compartilhando a mesma memória
+    decCountPPN(pa); // Decrementa a quantidade de processos que estão compartilhando a mesma memória
   }
   // Se há apenas um processo usando a pagina, basta dar permissão para escrita
   else {
@@ -569,9 +580,10 @@ void freevm_cow(pde_t *pgdir)
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
-  // Desaloca a memoria virtual do processo
+  // Desaloca as page tabels
   deallocuvm_cow(pgdir, KERNBASE, 0);
 
+  // desaloca os page directories
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P){
       char *v = P2V(PTE_ADDR(pgdir[i]));

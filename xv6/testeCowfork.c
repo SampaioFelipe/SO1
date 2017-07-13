@@ -2,8 +2,6 @@
 #include "stat.h"
 #include "user.h"
 
-#define N  2
-
 void testeCowfork()
 {
   int pid;
@@ -12,13 +10,13 @@ void testeCowfork()
   pid = cowfork();
 
   if(pid==0){
-    printf(1,"funcionando o filho\n");
+    printf(1,"funcionando o processo filho\n");
   }
   else{
-    printf(1,"funcionando o pai\n");
+    printf(1,"funcionando o processo pai\n");
   }
 
-  while (1);
+  while (1); // Loop infinito para que ambos os processos não parem e seja possivel visualizar seus dados
 }
 
 int main(int argc, char const *argv[]) {
