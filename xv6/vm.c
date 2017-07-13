@@ -370,7 +370,7 @@ setupkvm(void)
     if((d = setupkvm()) == 0)
     return 0;
 
-    for(i = 0; i < sz; i += PGSIZE){
+    for(i = PGSIZE; i < sz; i += PGSIZE){
       if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
       if(!(*pte & PTE_P))
@@ -450,7 +450,7 @@ pde_t* share_cow(pde_t *pgdir, uint sz)
     return 0;
 
   acquire(&tablelock);
-  for(i = 0; i < sz; i += PGSIZE){
+  for(i = PGSIZE; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
@@ -485,9 +485,16 @@ bad:
 }
 
 void handle_pgflt(void){
+
+  // Se o endereço que tentou ser acessado foi o 0 - avisar que foi um
+  // null pointer Exception
+  if (rcr2() == 0) {
+    cprintf("Segmentation Fault - Null Pointer Dereference\n");
+    kill(proc->pid);
+  }
   // Se o processo possui paginas compartilhadas, realiza a cópia da memoria
   // que causou o pagefault (por ser read only)
-  if (proc->shared == 1) {
+  else if (proc->shared == 1) {
     copyuvm_cow();
     cprintf("Page fault \n");
   }
