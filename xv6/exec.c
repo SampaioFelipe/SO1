@@ -41,8 +41,10 @@ exec(char *path, char **argv)
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
+    cprintf("FLAGS: %p\n",ph.flags);
     if(ph.type != ELF_PROG_LOAD)
       continue;
+    cprintf("AQUI\n");
     if(ph.memsz < ph.filesz)
       goto bad;
     if(ph.vaddr + ph.memsz < ph.vaddr)
@@ -51,9 +53,11 @@ exec(char *path, char **argv)
       goto bad;
     if(ph.vaddr % PGSIZE != 0)
       goto bad;
-    if(loaduvm(pgdir, (char*)ph.vaddr, ip, ph.off, ph.filesz) < 0)
-      goto bad;
+
+    if(loaduvm(pgdir, (char*)ph.vaddr, ip, ph.off, ph.filesz, ph.flags) < 0)
+        goto bad;
   }
+
   iunlockput(ip);
   end_op();
   ip = 0;
@@ -99,6 +103,9 @@ exec(char *path, char **argv)
   proc->tf->esp = sp;
   switchuvm(proc);
   freevm(oldpgdir);
+
+  cprintf("Aqui\n");
+
   return 0;
 
  bad:
