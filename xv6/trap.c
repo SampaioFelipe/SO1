@@ -93,7 +93,7 @@ trap(struct trapframe *tf)
             rcr2());
             // Se o endereço que tentou ser acessado foi o 0 - avisar que foi um
             // null pointer Exception
-            if (rcr2() == 0) {
+            if (rcr2() == 0 && tf->trapno == 14) {
               cprintf("Segmentation Fault - Null Pointer Dereference\n");
             }
     proc->killed = 1;

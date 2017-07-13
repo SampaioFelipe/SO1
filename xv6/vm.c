@@ -328,7 +328,7 @@ copyuvm(pde_t *pgdir, uint sz)
 
   if((d = setupkvm()) == 0)
     return 0;
-    // mudança: for i = PGSIZE, não 0 -> para deixar a página 0 vazia
+    // mudança: for i = PGSIZE, não 0 -> para não copiar a página 
   for(i = PGSIZE; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
