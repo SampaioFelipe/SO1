@@ -183,7 +183,7 @@ pde_t*          copyuvm(pde_t*, uint);
 //================ COW ======================
 pde_t*          share_cow(pde_t*, uint);
 void            handle_pgflt (void);
-int             copyuvm_cow(void);
+int             copyuvm_cow(uint);
 void            sharetableinit(void);
 int             getCountPPN(uint);
 void            incCountPPN(uint);

@@ -16,10 +16,9 @@ main(void)
     mknod("console", 1, 1);
     open("console", O_RDWR);
   }
-  
+
   dup(0);  // stdout
   dup(0);  // stderr
-  printf(1,"Initi aqui\n");
   for(;;){
     printf(1, "init: starting sh\n");
     pid = fork();

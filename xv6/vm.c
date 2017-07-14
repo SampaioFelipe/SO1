@@ -455,7 +455,8 @@ pde_t* share_cow(pde_t *pgdir, uint sz)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
-    *pte &= ~PTE_W; // disable the Writable bit
+    *pte &= ~PTE_W; // torna read-only (desabilita a escrita)
+    *pte |= PTE_SHARE; // Indica que a página é compartilhada
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
 
@@ -475,7 +476,7 @@ pde_t* share_cow(pde_t *pgdir, uint sz)
   }
   release(&tablelock);
 
-  lcr3(V2P(proc->pgdir)); // flush the TLB
+  lcr3(V2P(proc->pgdir)); // atualiza o TLB
 
   return d;
 
@@ -485,33 +486,37 @@ bad:
 }
 
 void handle_pgflt(void){
-
+  // Recupera o endereço virtual onde ocorreu o pagefault (armazenado no registrador cr2)
+  uint addr = rcr2();
   // Se o endereço que tentou ser acessado foi o 0 - avisar que foi um
   // null pointer Exception
-  if (rcr2() == 0) {
+  if (addr == 0) {
     cprintf("Segmentation Fault - Null Pointer Dereference\n");
     kill(proc->pid);
   }
   // Se o processo possui paginas compartilhadas, realiza a cópia da memoria
   // que causou o pagefault (por ser read only)
-  else if (proc->shared == 1) {
-    copyuvm_cow();
-    cprintf("Page fault \n");
-  }
+  else{
+    // Recupera o Page Table Entry do endereço acima para o processo atual
+    pte_t* pte = walkpgdir(proc->pgdir, (void *) addr, 0);
 
-  // Se for outro erro, apenas mata o processo
-  //kill(proc->pid);
+    if(PTE_FLAGS(*pte)&PTE_SHARE){
+        copyuvm_cow(addr);
+        cprintf("Page Fault: Allocing \n");
+    }
+    else{
+      cprintf("Segmentation Fault - Writing to Read-only Memory\n");
+      kill(proc->pid);
+    }
+  }
 }
 
-int copyuvm_cow(void)
+int copyuvm_cow(uint addr)
 {
   uint pa;
-  uint addr;
   pte_t *pte;
   char *mem;
 
-  // Recupera o endereço virtual onde ocorreu o pagefault (armazenado no registrador cr2)
-  addr = rcr2();
   // Recupera o Page Table Entry do endereço acima para o processo atual
   pte = walkpgdir(proc->pgdir, (void *) addr, 0);
   pa = PTE_ADDR(*pte);
@@ -522,14 +527,15 @@ int copyuvm_cow(void)
     if((mem = kalloc()) == 0) // aloca uma nova página de memoria
       goto bad;
     memmove(mem, (char*)P2V(pa), PGSIZE);
-    *pte &= 0xFFF; // reset the first 20 bits of the entry
+    *pte &= 0xFFF; // pega todas as flags de pte
+    *pte &= ~PTE_SHARE; // retira a flag de compartilhamento
     *pte |= V2P(mem) | PTE_W; // insere a permissão de escrita na nova pagina de memória
-
     decCountPPN(pa); // Decrementa a quantidade de processos que estão compartilhando a mesma memória
   }
-  // Se há apenas um processo usando a pagina, basta dar permissão para escrita
+  // Se há apenas um processo usando a pagina, basta dar permissão para escrita e retira a flag de compartilhamento
   else {
-    *pte |= PTE_W; // just enable the Writable bit for this process
+    *pte |= PTE_W;
+    *pte &= ~PTE_SHARE;
   }
 
   release(&tablelock);

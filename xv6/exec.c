@@ -49,7 +49,6 @@ exec(char *path, char **argv)
       goto bad;
     if(ph.type != ELF_PROG_LOAD)
       continue;
-    cprintf("AQUI\n");
     if(ph.memsz < ph.filesz)
       goto bad;
     if(ph.vaddr + ph.memsz < ph.vaddr)
@@ -109,9 +108,7 @@ exec(char *path, char **argv)
   proc->tf->esp = sp;
   switchuvm(proc);
   freevm(oldpgdir);
-
-  cprintf("Aqui\n");
-
+  
   return 0;
 
  bad:
