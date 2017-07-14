@@ -502,7 +502,7 @@ void handle_pgflt(void){
 
     if(PTE_FLAGS(*pte)&PTE_SHARE){
         copyuvm_cow(addr);
-        cprintf("Page Fault: Allocing \n");
+        cprintf("Page Fault: cowfork \n");
     }
     else{
       cprintf("Segmentation Fault - Writing to Read-only Memory\n");

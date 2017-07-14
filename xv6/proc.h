@@ -71,14 +71,3 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
-
-// Mapeamento de paginas
-// Existem dois arrays paralelos de tamanho NPROC*NPDENTRIES
-// NPROC*NPDENTRIES e o numero maximo de paginas que o sistema pode ter
-// Esta estrutura funciona como um dicionario mapeando de endereco fisico para virtual
-// struct pagemap
-// {
-//     pde_t* phisical_address[NPROC*NPDENTRIES]; // Enderecos fisicos
-//     pde_t* virtual_address[NPROC*NPDENTRIES]; // Enderecos virtuais
-//     int tamanho; // Tamanho atual do dicionario
-// };
