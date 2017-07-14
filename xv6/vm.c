@@ -472,7 +472,7 @@ pde_t* share_cow(pde_t *pgdir, uint sz)
       incCountPPN(pa);
     }
 
-    cprintf("pid: %d index: %d count: %d\n", proc->pid, pa, getCountPPN(pa));
+    // cprintf("pid: %d index: %p count: %d\n", proc->pid, pa, getCountPPN(pa));
   }
   release(&tablelock);
 
